@@ -1,0 +1,921 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hi, Malevolents 2015 - Your AI Tutor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap');
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: #111827; /* Dark BG Fallback */
+            background-image: radial-gradient(at 27% 37%, hsla(215, 98%, 61%, 0.1) 0px, transparent 50%), radial-gradient(at 97% 21%, hsla(160, 100%, 77%, 0.1) 0px, transparent 50%), radial-gradient(at 52% 99%, hsla(354, 98%, 61%, 0.1) 0px, transparent 50%), radial-gradient(at 10% 29%, hsla(256, 96%, 68%, 0.1) 0px, transparent 50%), radial-gradient(at 97% 96%, hsla(38, 60%, 74%, 0.1) 0px, transparent 50%), radial-gradient(at 33% 50%, hsla(222, 67%, 73%, 0.1) 0px, transparent 50%), radial-gradient(at 79% 53%, hsla(343, 68%, 79%, 0.1) 0px, transparent 50%);
+            transition: background-image 0.5s ease-in-out;
+        }
+        
+        /* Glassmorphism Panel Style */
+        .glass-panel {
+            background: rgba(31, 41, 55, 0.5); /* Semi-transparent dark slate */
+            -webkit-backdrop-filter: blur(20px);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+
+        /* Gradient Text Title */
+        .gradient-text {
+            background: linear-gradient(90deg, #2dd4bf, #a78bfa, #f472b6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-fill-color: transparent;
+        }
+
+        /* Dark Mode styles (default) */
+        .chat-bubble-user {
+            background-color: #14b8a6; /* Teal 500 */
+            color: white;
+            border-radius: 20px 20px 5px 20px;
+        }
+        .chat-bubble-ai {
+            background-color: rgba(51, 65, 85, 0.8); /* Slate 700 with more opacity */
+            color: #e2e8f0; /* Slate 200 */
+            border-radius: 20px 20px 20px 5px;
+        }
+        .katex { font-size: 1.1em; }
+        .loading-dot {
+            width: 10px;
+            height: 10px;
+            background-color: #94a3b8; /* Slate 400 */
+            border-radius: 50%;
+            display: inline-block;
+            animation: bounce 1.4s infinite ease-in-out both;
+        }
+        .loading-dot:nth-child(1) { animation-delay: -0.32s; }
+        .loading-dot:nth-child(2) { animation-delay: -0.16s; }
+        @keyframes bounce {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1.0); }
+        }
+        
+        /* Light Mode styles */
+        body.light-mode { 
+            background: #f1f5f9; /* Light BG Fallback */
+            background-image: radial-gradient(at 27% 37%, hsla(215, 98%, 80%, 0.2) 0px, transparent 50%), radial-gradient(at 97% 21%, hsla(160, 100%, 90%, 0.2) 0px, transparent 50%), radial-gradient(at 52% 99%, hsla(354, 98%, 85%, 0.2) 0px, transparent 50%), radial-gradient(at 10% 29%, hsla(256, 96%, 88%, 0.2) 0px, transparent 50%), radial-gradient(at 97% 96%, hsla(38, 60%, 90%, 0.2) 0px, transparent 50%), radial-gradient(at 33% 50%, hsla(222, 67%, 90%, 0.2) 0px, transparent 50%), radial-gradient(at 79% 53%, hsla(343, 68%, 90%, 0.2) 0px, transparent 50%);
+        }
+        .light-mode .glass-panel {
+            background: rgba(255, 255, 255, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        .light-mode .text-white { color: #0f172a; } /* Slate 900 */
+        .light-mode .text-white.opacity-90 { color: #334155; } /* Slate 700 */
+        .light-mode .chat-bubble-ai { background-color: #e2e8f0; color: #1e2937; } /* Slate 200 / Slate 800 */
+        .light-mode .text-gray-400 { color: #64748b; } /* Slate 500 */
+        .light-mode .placeholder-gray-400::placeholder { color: #94a3b8; } /* Slate 400 */
+        .light-mode #language-select { background-color: rgba(241, 245, 249, 0.8); color: #1e2937; border-color: #cbd5e1; }
+
+        /* Crystal Button style */
+        .crystal-button {
+             background: rgba(31, 41, 55, 0.4);
+            -webkit-backdrop-filter: blur(10px);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+        }
+        .crystal-button:hover {
+            background: rgba(51, 65, 85, 0.6);
+            box-shadow: 0 0 15px rgba(45, 212, 191, 0.3);
+        }
+        .light-mode .crystal-button {
+             background: rgba(255, 255, 255, 0.4);
+             color: #334155;
+        }
+        .light-mode .crystal-button:hover {
+             background: rgba(255, 255, 255, 0.7);
+        }
+
+        .pdf-button {
+            cursor: pointer;
+            opacity: 0.6;
+            transition: opacity 0.2s;
+            align-self: flex-end;
+            margin-left: 8px;
+        }
+        .pdf-button:hover { opacity: 1; }
+        #camera-feed { width: 100%; border-radius: 8px; }
+        .uploaded-thumbnail {
+            max-width: 100px;
+            max-height: 100px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            border: 2px solid #475569;
+        }
+        .starter-button { transition: all 0.3s ease-in-out; }
+    </style>
+</head>
+<body class="bg-slate-900 flex flex-col items-center justify-center min-h-screen p-4 transition-colors duration-300">
+
+    <div class="w-full max-w-3xl glass-panel rounded-2xl flex flex-col h-[90vh]">
+        <!-- Header -->
+        <div class="relative p-6 border-b border-white/10 text-center rounded-t-2xl flex justify-between items-center">
+            <div class="flex-1"></div> <!-- Spacer -->
+            <div class="text-center flex-grow">
+                <h1 class="text-4xl font-extrabold gradient-text">Hi, Malevolents 2015 🧠✨</h1>
+                <p class="text-white opacity-90 mt-1">Your Funky, Delightful, and Super-Smart Academic Sidekick!</p>
+            </div>
+            <div class="flex-1 flex justify-end">
+                <button id="settings-button" class="text-white p-2 rounded-full crystal-button">
+                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-settings"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Chat Area -->
+        <div id="chat-container" class="flex-1 p-6 overflow-y-auto text-base">
+            <!-- Messages will be appended here -->
+        </div>
+        
+        <!-- Loading Indicator -->
+        <div id="loading-indicator" class="hidden p-6 pt-0">
+             <div class="flex items-center space-x-2">
+                <div class="chat-bubble-ai p-4">
+                    <div class="flex items-center justify-center space-x-1">
+                        <div class="loading-dot"></div>
+                        <div class="loading-dot"></div>
+                        <div class="loading-dot"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Conversation Starters -->
+        <div id="starters" class="p-6 border-t border-white/10">
+            <p class="text-sm text-gray-400 mb-3 text-center">Or try one of these conversation starters:</p>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <button onclick="sendStarter(this)" class="starter-button crystal-button text-white p-3 rounded-lg text-sm text-left"></button>
+                <button onclick="sendStarter(this)" class="starter-button crystal-button text-white p-3 rounded-lg text-sm text-left"></button>
+                <button onclick="sendStarter(this)" class="starter-button crystal-button text-white p-3 rounded-lg text-sm text-left"></button>
+                <button onclick="sendStarter(this)" class="starter-button crystal-button text-white p-3 rounded-lg text-sm text-left"></button>
+            </div>
+        </div>
+
+        <!-- Input Area -->
+        <div class="p-6 border-t border-white/10">
+            <div class="flex items-center glass-panel rounded-lg shadow-sm">
+                <input type="text" id="user-input" class="flex-1 p-4 border-none rounded-l-lg focus:ring-0 bg-transparent text-white placeholder-gray-400" placeholder="Ask me anything, or upload a file...">
+                <button id="upload-button" class="px-5 py-4 text-white hover:bg-white/10 transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.49"></path></svg>
+                </button>
+                <button id="send-button" class="px-6 py-4 bg-teal-500 text-white font-semibold rounded-r-lg hover:bg-teal-600 transition-colors disabled:bg-teal-800 disabled:cursor-not-allowed">
+                    Send
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Upload/Scan Choice Modal -->
+    <div id="upload-choice-modal" class="hidden fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
+        <div class="glass-panel text-white p-8 rounded-2xl w-full max-w-sm m-4 text-center">
+            <h2 class="text-2xl font-bold mb-6">Upload or Scan</h2>
+            <div class="space-y-4">
+                <button id="upload-device-button" class="w-full bg-teal-500 text-white font-bold py-3 px-4 rounded-lg hover:bg-teal-600 transition-colors">Upload from Device</button>
+                <button id="scan-camera-button" class="w-full crystal-button font-bold py-3 px-4 rounded-lg">Scan with Camera</button>
+            </div>
+            <button id="close-upload-choice-button" class="mt-6 text-slate-400 hover:text-white">Cancel</button>
+        </div>
+    </div>
+    <input type="file" id="file-input" class="hidden" accept="image/*">
+
+    <!-- Camera Scanner Modal -->
+    <div id="camera-modal" class="hidden fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4">
+        <div class="glass-panel text-white p-6 rounded-2xl w-full max-w-2xl m-4 text-center">
+            <h2 class="text-2xl font-bold mb-4">Scanner</h2>
+            <video id="camera-feed" playsinline></video>
+            <canvas id="camera-canvas" class="hidden"></canvas>
+            <div class="mt-4 flex justify-center space-x-4">
+                 <button id="capture-button" class="w-1/2 bg-teal-500 text-white font-bold py-3 px-4 rounded-lg hover:bg-teal-600 transition-colors">Capture</button>
+                 <button id="close-camera-button" class="w-1/2 crystal-button font-bold py-3 px-4 rounded-lg">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="hidden fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
+        <div class="glass-panel text-white p-8 rounded-2xl w-full max-w-md m-4">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold">Settings</h2>
+                <button id="close-settings-button" class="p-2 rounded-full hover:bg-white/10 transition-colors">&times;</button>
+            </div>
+
+            <!-- Color Theme -->
+            <div class="mb-6">
+                <h3 class="text-lg font-semibold mb-3">Color Theme</h3>
+                <div class="glass-panel p-3 rounded-lg flex items-center justify-between">
+                    <span>Light / Dark Mode</span>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="theme-toggle" class="sr-only peer">
+                        <div class="w-11 h-6 bg-slate-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-teal-500"></div>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Font Size -->
+            <div class="mb-6">
+                <h3 class="text-lg font-semibold mb-3">Font Size</h3>
+                <div class="glass-panel p-2 rounded-lg flex justify-between items-center">
+                    <button id="font-decrease" class="px-4 py-2 rounded-md hover:bg-white/10 transition-colors">A-</button>
+                    <button id="font-reset" class="px-4 py-2 rounded-md hover:bg-white/10 transition-colors">Default</button>
+                    <button id="font-increase" class="px-4 py-2 rounded-md hover:bg-white/10 transition-colors">A+</button>
+                </div>
+            </div>
+
+            <!-- Output Language -->
+            <div class="mb-6">
+                <h3 class="text-lg font-semibold mb-3">Output Language</h3>
+                <div class="glass-panel p-1 rounded-lg">
+                   <select id="language-select" class="w-full bg-transparent text-white p-2 rounded-md border border-white/20 focus:outline-none focus:ring-2 focus:ring-teal-500">
+                        <option value="auto" class="bg-slate-800">Answer in Detected Language</option>
+                        <option value="english" class="bg-slate-800">Answer in English Only</option>
+                        <option value="bilingual" class="bg-slate-800">Answer in Detected Language + English</option>
+                   </select>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+
+    <script>
+        // DOM Elements
+        const chatContainer = document.getElementById('chat-container');
+        const userInput = document.getElementById('user-input');
+        const sendButton = document.getElementById('send-button');
+        const startersContainer = document.getElementById('starters');
+        const loadingIndicator = document.getElementById('loading-indicator');
+        const settingsButton = document.getElementById('settings-button');
+        const settingsModal = document.getElementById('settings-modal');
+        const closeSettingsButton = document.getElementById('close-settings-button');
+        const themeToggle = document.getElementById('theme-toggle');
+        const fontDecrease = document.getElementById('font-decrease');
+        const fontReset = document.getElementById('font-reset');
+        const fontIncrease = document.getElementById('font-increase');
+        const languageSelect = document.getElementById('language-select');
+        
+        // Upload and Scanner Elements
+        const uploadButton = document.getElementById('upload-button');
+        const uploadChoiceModal = document.getElementById('upload-choice-modal');
+        const closeUploadChoiceButton = document.getElementById('close-upload-choice-button');
+        const uploadDeviceButton = document.getElementById('upload-device-button');
+        const scanCameraButton = document.getElementById('scan-camera-button');
+        const fileInput = document.getElementById('file-input');
+        const cameraModal = document.getElementById('camera-modal');
+        const cameraFeed = document.getElementById('camera-feed');
+        const cameraCanvas = document.getElementById('camera-canvas');
+        const captureButton = document.getElementById('capture-button');
+        const closeCameraButton = document.getElementById('close-camera-button');
+
+        // The core instructions for our GPT persona
+        const systemPrompt = `
+            **// GPT IDENTITY & PERSONA //**
+
+            You are "Hi, Malevolents 2015," a brilliant, witty, and incredibly helpful AI. Your personality is a unique blend of funky, delightful, and extremely smart. Think of yourself as a cool, approachable genius friend who is always excited to help. You are enthusiastic, encouraging, and you make even the most boring topics sound fascinating.
+
+            **Your Core Directives:**
+            1.  **Enthusiastic Greeting:** Always start your first response in a new chat with a variation of "Hi! Malevolents 2015 here, ready to rock your query! What's on your mind today?"
+            2.  **Funky & Delightful Tone:** Use a vibrant and positive tone. Sprinkle in emojis tastefully (like 💡, ✨, 📚, 🔬, 🇮🇳) to add personality. Use analogies, fun facts, and real-world examples to make explanations clear and engaging.
+            3.  **Omni-Subject Mastery:** You are an expert in literally every subject, with a special focus on the complete academic curriculum of India (CBSE, ICSE, State Boards, University level, and competitive exams). You must be able to answer questions from any field of knowledge, no matter how niche. If a user asks about a subject not on your list, you act as an expert in it anyway.
+            4.  **Problem-Solving Methodology:** When a user asks a question, especially a complex one, follow this method:
+                * **Acknowledge & Encourage:** Start with a positive affirmation like, "Awesome question!" or "Let's dive into this!"
+                * **Break it Down:** Explain the solution step-by-step. Use clear headings, bullet points, or numbered lists.
+                * **Explain the 'Why':** Don't just give the answer. Explain the underlying concepts, formulas, or historical context.
+                * **Simplify:** Use simple language and analogies. For example, explain electricity flow like water in pipes or a computer program like a recipe.
+                * **Engage:** After explaining, ask a follow-up question to encourage critical thinking, like "Does that make sense?" or "Can you think of another example where this might apply?"
+            5.  **Multilingual Genius:** You are fluent in all languages. When a user asks a question in a specific language, you must respond fluently and accurately in that same language, unless instructed otherwise for a specific query. You should be able to seamlessly switch between languages like Hindi, Tamil, Bengali, French, etc., and English.
+
+            **// KNOWLEDGE DOMAIN: SUBJECT LIST //**
+
+            You are an expert in, but not limited to, the following 100+ subjects. This list is your foundation, but your knowledge is boundless.
+
+            **A. SCIENCES:**
+            1.  Physics (Classical, Modern, Quantum, Nuclear)
+            2.  Chemistry (Organic, Inorganic, Physical, Analytical)
+            3.  Biology (Botany, Zoology, Microbiology, Genetics)
+            4.  Environmental Science (EVS)
+            5.  Geology & Earth Science
+            6.  Astronomy & Astrophysics
+            7.  Biotechnology
+            8.  Forensic Science
+            9.  Food Science & Nutrition
+            10. Marine Biology
+            11. Neuroscience
+
+            **B. MATHEMATICS & LOGIC:**
+            12. Arithmetic
+            13. Algebra
+            14. Geometry
+            15. Trigonometry
+            16. Calculus
+            17. Statistics & Probability
+            18. Linear Algebra
+            19. Discrete Mathematics
+            20. Logic & Reasoning (Verbal, Non-Verbal)
+            21. Vedic Maths
+
+            **C. HUMANITIES & SOCIAL SCIENCES:**
+            22. History (Indian, World, Ancient, Medieval, Modern)
+            23. Geography (Physical, Human, Indian)
+            24. Political Science / Civics
+            25. Economics (Micro, Macro, Indian Economy)
+            26. Sociology
+            27. Psychology
+            28. Philosophy
+            29. Anthropology
+            30. Archaeology
+            31. Home Science
+            32. Public Administration
+            33. Social Work
+
+            **D. LANGUAGES & LITERATURE (Global & Indian):**
+            34. English (Literature, Grammar, Composition)
+            35. Hindi (Literature, Grammar - Vyakaran)
+            36. Sanskrit
+            37. Urdu
+            38. Bengali
+            39. Tamil
+            40. Telugu
+            41. Kannada
+            42. Malayalam
+            43. Marathi
+            44. Gujarati
+            45. Punjabi
+            46. Odia
+            47. Assamese
+            48. French
+            49. German
+            50. Spanish
+            51. Mandarin
+            52. Japanese
+            53. Linguistics
+
+            **E. COMMERCE & FINANCE:**
+            54. Accountancy
+            55. Business Studies
+            56. Commerce
+            57. Entrepreneurship
+            58. Financial Management
+            59. Stock Market & Investing
+            60. Banking & Insurance
+            61. Marketing
+            62. Human Resource Management
+
+            **F. COMPUTER & INFORMATION TECHNOLOGY:**
+            63. Computer Science (Fundamentals)
+            64. Programming (Python, Java, C++, C, JavaScript, etc.)
+            65. Data Structures & Algorithms
+            66. Web Development (HTML, CSS, JS)
+            67. Database Management (SQL)
+            68. Artificial Intelligence & Machine Learning
+            69. Cybersecurity
+            70. Networking
+            71. Cloud Computing
+            72. UI/UX Design
+
+            **G. PROFESSIONAL & MEDICAL FIELDS:**
+            73. Medicine (Anatomy, Physiology, etc.)
+            74. Pharmacy (Pharmacology, Pharmacognosy)
+            75. Law (Constitutional, Criminal, Civil)
+            76. Engineering (Civil, Mechanical, Electrical, Computer)
+            77. Architecture
+            78. Journalism & Mass Communication
+            79. Hotel Management
+            80. Fashion Designing
+            81. Agriculture
+
+            **H. ARTS & CULTURE:**
+            82. Fine Arts (Painting, Sculpture)
+            83. Performing Arts (Music, Dance, Theatre)
+            84. Indian Classical Music (Hindustani, Carnatic)
+            85. Indian Classical Dance (Bharatanatyam, Kathak, etc.)
+            86. Film Studies
+            87. Photography
+            88. Mythology (Indian & World)
+
+            **I. COMPETITIVE EXAMS (INDIA):**
+            89. UPSC Civil Services (Prelims, Mains)
+            90. JEE (Mains & Advanced) - Physics, Chemistry, Maths
+            91. NEET - Physics, Chemistry, Biology
+            92. CLAT (Legal Aptitude, Logical Reasoning)
+            93. CAT (Quantitative Aptitude, Data Interpretation)
+            94. SSC CGL / CHSL
+            95. Bank PO / Clerk Exams
+            96. NDA / CDS
+            97. UGC NET
+
+            **J. GENERAL KNOWLEDGE & LIFE SKILLS:**
+            98. General Knowledge & Current Affairs
+            99. Moral Science & Value Education
+            100. Physical Education
+            101. Financial Literacy
+            102. Public Speaking
+            103. Disaster Management
+            104. Yoga & Wellness
+
+            **// OUTPUT FORMATTING //**
+
+            * **LaTeX for Formulas:** For any mathematical equations, chemical formulas, or scientific notations, you MUST use LaTeX formatting. Use '$ ... $' for inline math and '$$ ... $$' for block equations. For example: The Pythagorean theorem is '$a^2 + b^2 = c^2$'. The formula for water is '$H_2O$'.
+            * **Clarity is Key:** Use Markdown (bolding, italics, lists) to structure your answers for maximum readability.
+            * **No Cop-Outs:** Never say "I don't know" or "I am an AI and cannot answer that." Instead, say "That's a fascinating question! Let's reason through it based on what we know." and proceed to provide the most logical answer possible.
+            * **Image Analysis:** When the user uploads an image, your primary task is to analyze it based on their question. Start your response by acknowledging the image (e.g., "Looking at the image you've sent..."). Be detailed in your visual analysis.
+        `;
+        
+        let conversationHistory = [];
+        let uploadedImageBase64 = null; // To hold the image data
+
+        // Function to append a message to the chat
+        function appendMessage(sender, message, imageBase64 = null) {
+            const messageWrapper = document.createElement('div');
+            messageWrapper.classList.add('flex', 'mb-4', 'items-start');
+            const messageBubble = document.createElement('div');
+            messageBubble.classList.add('p-4', 'max-w-[85%]');
+
+            if (sender === 'user') {
+                messageWrapper.classList.add('justify-end');
+                messageBubble.classList.add('chat-bubble-user');
+                
+                if (imageBase64) {
+                    const img = document.createElement('img');
+                    img.src = imageBase64;
+                    img.classList.add('uploaded-thumbnail');
+                    messageBubble.appendChild(img);
+                }
+                const textNode = document.createElement('div');
+                textNode.textContent = message;
+                messageBubble.appendChild(textNode);
+
+                messageWrapper.appendChild(messageBubble);
+            } else { // AI message
+                messageWrapper.classList.add('justify-start');
+                messageBubble.classList.add('chat-bubble-ai');
+                
+                const parsedHtml = marked.parse(message);
+                messageBubble.innerHTML = parsedHtml;
+
+                // PDF Button
+                const pdfButton = document.createElement('div');
+                pdfButton.classList.add('pdf-button');
+                pdfButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-slate-400"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>`;
+                pdfButton.onclick = () => generatePdfFromAnswer(message);
+                
+                messageWrapper.appendChild(messageBubble);
+                messageWrapper.appendChild(pdfButton);
+
+                renderMathInElement(messageBubble, {
+                    delimiters: [
+                        {left: '$$', right: '$$', display: true},
+                        {left: '$', right: '$', display: false}
+                    ]
+                });
+            }
+            
+            chatContainer.appendChild(messageWrapper);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        // Send a message to the Gemini API
+        async function sendMessageToAI(userMessage, imageBase64 = null) {
+            loadingIndicator.classList.remove('hidden');
+            sendButton.disabled = true;
+            userInput.disabled = true;
+
+            const languagePreference = languageSelect.value;
+            let finalUserMessage = userMessage;
+
+            if (languagePreference === 'english') {
+                finalUserMessage = `User asked: "${userMessage}". Important: You must respond ONLY in English.`;
+            } else if (languagePreference === 'bilingual') {
+                finalUserMessage = `User asked: "${userMessage}". Important: Please detect the language of the user's question. First, provide a comprehensive answer in that detected language. After that, under a clear heading like '--- English Translation ---', provide the same comprehensive answer translated into English.`;
+            }
+            
+            const userParts = [{ text: finalUserMessage }];
+            if (imageBase64) {
+                userParts.push({
+                    inlineData: {
+                        mimeType: 'image/jpeg',
+                        data: imageBase64.split(',')[1] // remove the data URI prefix
+                    }
+                });
+            }
+
+            conversationHistory.push({ role: "user", parts: userParts });
+
+            try {
+                const apiKey = "AIzaSyBpbNXDEDS7naBDeCEcHctnRjIcAYCOBhM";
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+
+                const payload = {
+                    contents: conversationHistory,
+                    systemInstruction: {
+                        parts: [{ text: systemPrompt }]
+                    },
+                };
+                
+                let responseText = "";
+                let retries = 0;
+                const maxRetries = 5;
+
+                while (retries < maxRetries) {
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (response.ok) {
+                        const result = await response.json();
+                        const candidate = result.candidates?.[0];
+                        if (candidate && candidate.content?.parts?.[0]?.text) {
+                            responseText = candidate.content.parts[0].text;
+                            break; 
+                        }
+                    }
+                    
+                    if (response.status === 429 || response.status >= 500) {
+                        retries++;
+                        const delay = Math.pow(2, retries) * 1000;
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                    } else {
+                        responseText = "Sorry, I encountered an error. Please try again.";
+                        console.error("API Error:", response.status, await response.text());
+                        break;
+                    }
+                }
+                
+                if (!responseText) {
+                    responseText = "I'm having trouble connecting right now. Please try again later.";
+                }
+
+                conversationHistory.push({ role: "model", parts: [{ text: responseText }] });
+                appendMessage('ai', responseText);
+                uploadedImageBase64 = null; // Clear image after sending
+
+            } catch (error) {
+                console.error('Error fetching from Gemini API:', error);
+                appendMessage('ai', 'Oops! Something went wrong on my end. Please check the console for details and try again.');
+            } finally {
+                loadingIndicator.classList.add('hidden');
+                sendButton.disabled = false;
+                userInput.disabled = false;
+                userInput.focus();
+            }
+        }
+        
+        async function handleSend() {
+            const message = userInput.value.trim();
+            if (message || uploadedImageBase64) {
+                const messageToSend = message || "What do you see in this image?";
+                appendMessage('user', messageToSend, uploadedImageBase64);
+                userInput.value = '';
+                startersContainer.classList.add('hidden');
+                await sendMessageToAI(messageToSend, uploadedImageBase64);
+            }
+        }
+        
+        // --- SETTINGS LOGIC ---
+        function toggleSettings() {
+            settingsModal.classList.toggle('hidden');
+        }
+
+        settingsButton.addEventListener('click', toggleSettings);
+        closeSettingsButton.addEventListener('click', toggleSettings);
+
+        function applyTheme(theme) {
+            if (theme === 'dark') {
+                document.body.classList.remove('light-mode');
+                themeToggle.checked = false;
+            } else {
+                document.body.classList.add('light-mode');
+                themeToggle.checked = true;
+            }
+            localStorage.setItem('theme', theme);
+        }
+
+        themeToggle.addEventListener('change', (e) => {
+            applyTheme(e.target.checked ? 'light' : 'dark');
+        });
+
+        const fontSizes = ['text-sm', 'text-base', 'text-lg'];
+        let currentFontIndex = 1;
+
+        function applyFontSize(sizeIndex) {
+            chatContainer.classList.remove(...fontSizes);
+            chatContainer.classList.add(fontSizes[sizeIndex]);
+            currentFontIndex = sizeIndex;
+            localStorage.setItem('fontSizeIndex', sizeIndex);
+        }
+
+        fontDecrease.addEventListener('click', () => {
+            if (currentFontIndex > 0) applyFontSize(currentFontIndex - 1);
+        });
+        fontIncrease.addEventListener('click', () => {
+            if (currentFontIndex < fontSizes.length - 1) applyFontSize(currentFontIndex + 1);
+        });
+        fontReset.addEventListener('click', () => applyFontSize(1));
+
+        function applyLanguagePreference(lang) {
+            languageSelect.value = lang;
+            localStorage.setItem('language', lang);
+        }
+
+        languageSelect.addEventListener('change', (e) => {
+            applyLanguagePreference(e.target.value);
+        });
+
+        function loadPreferences() {
+            const savedTheme = localStorage.getItem('theme') || 'dark';
+            applyTheme(savedTheme);
+
+            const savedFontSizeIndex = parseInt(localStorage.getItem('fontSizeIndex')) || 1;
+            applyFontSize(savedFontSizeIndex);
+            
+            const savedLanguage = localStorage.getItem('language') || 'auto';
+            applyLanguagePreference(savedLanguage);
+        }
+
+        // --- INACTIVITY BEEPER LOGIC ---
+        let inactivityTimer;
+        const inactivityTime = 3 * 60 * 1000; // 3 minutes
+
+        function playWarningBeep() {
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            function beep(frequency, duration, delay) {
+                try {
+                    const oscillator = audioContext.createOscillator();
+                    const gainNode = audioContext.createGain();
+                    oscillator.connect(gainNode);
+                    gainNode.connect(audioContext.destination);
+
+                    oscillator.type = 'sine';
+                    oscillator.frequency.value = frequency;
+                    gainNode.gain.setValueAtTime(0, audioContext.currentTime + delay);
+                    gainNode.gain.linearRampToValueAtTime(1, audioContext.currentTime + delay + 0.01);
+                    gainNode.gain.exponentialRampToValueAtTime(0.00001, audioContext.currentTime + delay + duration);
+                    
+                    oscillator.start(audioContext.currentTime + delay);
+                    oscillator.stop(audioContext.currentTime + delay + duration);
+                } catch(e) {
+                    console.error("Could not play beep", e);
+                }
+            }
+            beep(880, 0.2, 0); // Beep 1
+            beep(880, 0.2, 0.3); // Beep 2
+        }
+
+        function resetInactivityTimer() {
+            clearTimeout(inactivityTimer);
+            inactivityTimer = setTimeout(playWarningBeep, inactivityTime);
+        }
+
+        // --- UPLOAD & SCANNER LOGIC ---
+        uploadButton.addEventListener('click', () => uploadChoiceModal.classList.remove('hidden'));
+        closeUploadChoiceButton.addEventListener('click', () => uploadChoiceModal.classList.add('hidden'));
+
+        uploadDeviceButton.addEventListener('click', () => {
+            fileInput.click();
+            uploadChoiceModal.classList.add('hidden');
+        });
+
+        fileInput.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    handleImageUpload(e.target.result);
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        scanCameraButton.addEventListener('click', async () => {
+            uploadChoiceModal.classList.add('hidden');
+            cameraModal.classList.remove('hidden');
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                cameraFeed.srcObject = stream;
+                await cameraFeed.play();
+            } catch (err) {
+                console.error("Error accessing camera:", err);
+                if (err.name === 'NotAllowedError' || (err.message && err.message.toLowerCase().includes('permission'))) {
+                    appendMessage('ai', "Camera access was denied or dismissed. To use the scanner, you may need to allow camera access in your browser's site settings.");
+                } else if (err.name !== 'AbortError') {
+                    appendMessage('ai', "I couldn't access the camera. Please ensure it's connected and not in use by another application.");
+                }
+                cameraModal.classList.add('hidden');
+                stopCamera();
+            }
+        });
+
+        function stopCamera() {
+            const stream = cameraFeed.srcObject;
+            if (stream) {
+                const tracks = stream.getTracks();
+                tracks.forEach(track => track.stop());
+                cameraFeed.srcObject = null;
+            }
+        }
+
+        closeCameraButton.addEventListener('click', () => {
+            stopCamera();
+            cameraModal.classList.add('hidden');
+        });
+
+        captureButton.addEventListener('click', () => {
+            cameraCanvas.width = cameraFeed.videoWidth;
+            cameraCanvas.height = cameraFeed.videoHeight;
+            const context = cameraCanvas.getContext('2d');
+            context.drawImage(cameraFeed, 0, 0, cameraCanvas.width, cameraCanvas.height);
+            const dataUrl = cameraCanvas.toDataURL('image/jpeg');
+            stopCamera();
+            cameraModal.classList.add('hidden');
+            handleImageUpload(dataUrl);
+        });
+
+        function handleImageUpload(base64) {
+            uploadedImageBase64 = base64;
+            appendMessage('ai', "Image loaded successfully! What question do you have about it?");
+            userInput.focus();
+        }
+        
+        // Export individual answer to PDF
+        function generatePdfFromAnswer(markdownContent) {
+            const { jsPDF } = window.jspdf;
+            const pdf = new jsPDF({
+                orientation: 'p',
+                unit: 'mm',
+                format: 'a4'
+            });
+
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = marked.parse(markdownContent);
+            
+            const margin = 15;
+            let cursorY = margin;
+            const maxWidth = pdf.internal.pageSize.getWidth() - margin * 2;
+            const lineHeight = 7;
+
+            function checkPageBreak(neededHeight) {
+                if (cursorY + neededHeight > pdf.internal.pageSize.getHeight() - margin) {
+                    pdf.addPage();
+                    cursorY = margin;
+                }
+            }
+
+            function processNode(node) {
+                switch (node.nodeName) {
+                    case 'P':
+                    case 'DIV':
+                        pdf.setFont('helvetica', 'normal');
+                        const pLines = pdf.splitTextToSize(node.textContent, maxWidth);
+                        checkPageBreak(pLines.length * lineHeight);
+                        pdf.text(pLines, margin, cursorY);
+                        cursorY += pLines.length * lineHeight;
+                        break;
+                    case 'H1':
+                    case 'H2':
+                    case 'H3':
+                        pdf.setFont('helvetica', 'bold');
+                        const hLines = pdf.splitTextToSize(node.textContent, maxWidth);
+                        checkPageBreak(hLines.length * (lineHeight + 2) + 5);
+                        cursorY += 5;
+                        pdf.text(hLines, margin, cursorY);
+                        cursorY += hLines.length * (lineHeight + 2);
+                        break;
+                    case 'UL':
+                    case 'OL':
+                        Array.from(node.children).forEach((li, index) => {
+                            pdf.setFont('helvetica', 'normal');
+                            const prefix = (node.nodeName === 'UL' ? '• ' : `${index + 1}. `);
+                            const liLines = pdf.splitTextToSize(li.textContent, maxWidth - 5);
+                             checkPageBreak(liLines.length * lineHeight);
+                            pdf.text(prefix + liLines[0], margin, cursorY);
+                            if (liLines.length > 1) {
+                                pdf.text(liLines.slice(1), margin + 5, cursorY + lineHeight);
+                            }
+                            cursorY += liLines.length * lineHeight;
+                        });
+                        break;
+                    case 'BLOCKQUOTE':
+                        pdf.setFont('helvetica', 'italic');
+                        const bqLines = pdf.splitTextToSize(node.textContent, maxWidth - 10);
+                        checkPageBreak(bqLines.length * lineHeight);
+                        pdf.text(bqLines, margin + 5, cursorY, { align: 'left' });
+                        cursorY += bqLines.length * lineHeight;
+                        break;
+                    case 'PRE':
+                        pdf.setFont('courier', 'normal');
+                        pdf.setTextColor(66, 76, 85);
+                        const codeText = node.textContent.replace(/\t/g, '  ');
+                        const codeLines = pdf.splitTextToSize(codeText, maxWidth);
+                        checkPageBreak(codeLines.length * (lineHeight-2) + 6);
+                        pdf.setFillColor(241, 245, 249);
+                        pdf.rect(margin - 2, cursorY - 4, maxWidth + 4, codeLines.length * (lineHeight - 2) + 4, 'F');
+                        pdf.text(codeLines, margin, cursorY);
+                        cursorY += codeLines.length * (lineHeight-2) + 5;
+                        pdf.setTextColor(0, 0, 0);
+                        break;
+                    default:
+                         if (node.textContent.trim()) {
+                             pdf.setFont('helvetica', 'normal');
+                             const textLines = pdf.splitTextToSize(node.textContent, maxWidth);
+                             checkPageBreak(textLines.length * lineHeight);
+                             pdf.text(textLines, margin, cursorY);
+                             cursorY += textLines.length * lineHeight;
+                         }
+                }
+                cursorY += 3;
+            }
+
+            Array.from(tempDiv.childNodes).forEach(processNode);
+            pdf.save('Malevolents-2015-Answer.pdf');
+        }
+
+        // --- DYNAMIC STARTERS LOGIC ---
+        const allStarters = [
+            "Explain the concept of gravity like I'm 10 years old.",
+            "Help me solve this math problem: `2x² - 8x + 6 = 0`",
+            "Tell me a fun fact about the Mughal Empire in India.",
+            "Write a simple 5-line poem in Hindi about rain (बारिश).",
+            "What is photosynthesis?",
+            "Who was Ashoka the Great?",
+            "Give me a recipe for a simple daal.",
+            "What's the difference between Java and JavaScript?",
+            "Explain the theory of relativity in simple terms.",
+            "How does a computer's CPU work?",
+            "Summarize the plot of Shakespeare's 'Hamlet'.",
+            "What are the fundamental rights in the Indian Constitution?",
+            "Draft a short email asking for a day off.",
+            "What is blockchain technology?",
+            "Tell me about the Harappan civilization.",
+            "How can I calculate the area of a circle?",
+        ];
+
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+        }
+
+        function updateStarters() {
+            const starterButtons = document.querySelectorAll('.starter-button');
+            shuffleArray(allStarters);
+            starterButtons.forEach((button, index) => {
+                const newText = allStarters[index];
+                // Add a subtle fade-out/fade-in effect
+                button.style.opacity = '0';
+                setTimeout(() => {
+                    button.innerHTML = newText.replace(/`([^`]+)`/g, '<code class="bg-slate-800 px-1 rounded">\$1</code>');
+                    button.style.opacity = '1';
+                }, 300);
+            });
+        }
+        
+        // --- EVENT LISTENERS & INITIALIZATION ---
+        sendButton.addEventListener('click', handleSend);
+        userInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                handleSend();
+            }
+        });
+        
+        window.sendStarter = async function(element) {
+            const message = element.textContent;
+            appendMessage('user', message);
+            startersContainer.classList.add('hidden');
+            await sendMessageToAI(message);
+        }
+
+        window.onload = () => {
+             appendMessage('ai', "Hi! Malevolents 2015 here, ready to rock your query! What's on your mind today?");
+             conversationHistory.push({ role: "model", parts: [{ text: "Hi! Malevolents 2015 here, ready to rock your query! What's on your mind today?" }] });
+             loadPreferences();
+             resetInactivityTimer();
+             // Dynamic starters init
+             updateStarters();
+             setInterval(updateStarters, 10000);
+             
+             document.addEventListener('mousemove', resetInactivityTimer);
+             document.addEventListener('mousedown', resetInactivityTimer);
+             document.addEventListener('keydown', resetInactivityTimer);
+        };
+
+    </script>
+</body>
+</html>
+
